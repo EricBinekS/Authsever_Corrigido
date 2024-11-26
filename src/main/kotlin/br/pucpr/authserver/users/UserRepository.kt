@@ -5,14 +5,18 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 
 @Repository
-interface UserRepository: JpaRepository<User, Long> {
+interface UserRepository : JpaRepository<User, Long> {
     fun findByEmail(email: String): User?
 
     @Query(
-        "select u from User u " +
-        " join u.roles r" +
-        " where r.name = :role" +
-        " order by u.name"
+        "select distinct u from User u " +
+                " join u.roles r" +
+                " where r.name = :role" +
+                " order by u.name"
     )
     fun findByRole(role: String): List<User>
+
+    fun findByIdOrNull(id: Long): User? {
+        return findById(id).orElse(null)
+    }
 }

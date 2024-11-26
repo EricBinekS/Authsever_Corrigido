@@ -27,4 +27,6 @@ class User(
         inverseJoinColumns = [JoinColumn(name="idRole")]
     )
     val roles: MutableSet<Role> = mutableSetOf()
-)
+) {
+    companion object
+}

@@ -6,13 +6,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 data class UserToken(
     val id: Long,
     val name: String,
-    val roles: Set<String>
+    val roles: List<String>
 ) {
-    constructor(): this(0, "", setOf())
+    constructor(): this(0, "", listOf())
     constructor(user: User) : this(
         id = user.id ?: -1L,
         name = user.name,
-        roles = user.roles.map { it.name }.toSortedSet()
+        roles = user.roles.map { it.name }.sorted()
     )
 
     @get:JsonIgnore
