@@ -8,62 +8,26 @@ import org.springframework.http.HttpMethod
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
-import org.springframework.security.config.http.SessionCreationPolicy.STATELESS
+import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
-import org.springframework.security.web.authentication.www.BasicAuthenticationFilter
-import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher
-import org.springframework.web.cors.CorsConfiguration
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource
-import org.springframework.web.filter.CorsFilter
-import org.springframework.web.servlet.handler.HandlerMappingIntrospector
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 
 @Configuration
 @EnableMethodSecurity
-@SecurityScheme(
-    name = "AuthServer",
-    type = SecuritySchemeType.HTTP,
-    scheme = "bearer",
-    bearerFormat = "JWT"
-)
-class SecurityConfig(
-    private val jwtFilter: JwtTokenFilter
-) {
-    @Bean
-    fun mvc(introspector: HandlerMappingIntrospector) =
-        MvcRequestMatcher.Builder(introspector)
+class SecurityConfig(private val jwtTokenFilter: JwtTokenFilter) {
 
     @Bean
-    fun corsFilter() =
-        CorsConfiguration().apply {
-            addAllowedHeader("*")
-            addAllowedMethod("*")
-            addAllowedOrigin("*")
-        }.let {
-            UrlBasedCorsConfigurationSource().apply {
-                registerCorsConfiguration("/**", it)
+    fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
+        http.csrf().disable()
+            .authorizeHttpRequests { auth ->
+                
+                // Restrict access to all endpoints under /api/emprestimos to authenticated users
+                auth.requestMatchers("/api/emprestimos/**").authenticated()
+    
+                    .requestMatchers("/api/livros/**").authenticated()
+                    .anyRequest().permitAll()
             }
-        }.let {
-            CorsFilter(it)
-        }
-
-    @Bean
-    fun filterChain(security: HttpSecurity, mvc: MvcRequestMatcher.Builder): SecurityFilterChain =
-        security
-            .sessionManagement { it.sessionCreationPolicy(STATELESS) }
-            .cors(Customizer.withDefaults())
-            .csrf { it.disable() }
-            .headers { it.frameOptions { fo -> fo.disable() } }
-            .authorizeHttpRequests { requests ->
-                requests
-                    .requestMatchers(antMatcher(HttpMethod.GET)).permitAll()
-                    .requestMatchers(mvc.pattern(HttpMethod.POST, "/users/login")).permitAll()
-                    .requestMatchers(mvc.pattern(HttpMethod.POST, "/users")).permitAll()
-                    .requestMatchers(antMatcher("/h2-console/**")).permitAll()
-                    .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/emprestimos")).authenticated() // Protege criação de empréstimos
-                    .requestMatchers(mvc.pattern(HttpMethod.DELETE, "/api/livros/**")).authenticated() // Protege exclusão de livros
-                    .anyRequest().authenticated()
-            }.addFilterBefore(jwtFilter, BasicAuthenticationFilter::class.java)
-            .build()
+            .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter::class.java)
+        return http.build()
+    }
 }

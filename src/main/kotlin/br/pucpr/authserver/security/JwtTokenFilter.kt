@@ -15,19 +15,31 @@ class JwtTokenFilter(private val jwt: Jwt) : GenericFilterBean() {
         val httpRequest = req as HttpServletRequest
         val httpResponse = res as HttpServletResponse
 
-        try {
+        
+    try {
+        // Log the start of token extraction
+        println("JwtTokenFilter: Starting token validation.")
+    
             val auth = jwt.extract(httpRequest) // Extrai autenticação do token
             if (auth != null) {
                 SecurityContextHolder.getContext().authentication = auth
             }
         } catch (e: Exception) {
             // Caso o token seja inválido ou ausente, limpar o contexto
-            SecurityContextHolder.clearContext()
+            
+        // Log invalid token
+        println("JwtTokenFilter: Invalid or missing token.")
+        SecurityContextHolder.clearContext()
+    
             httpResponse.status = HttpServletResponse.SC_UNAUTHORIZED
             httpResponse.writer.write("Token inválido ou ausente.")
             return
         }
 
+        
+        // Log successful token processing
+        println("JwtTokenFilter: Token validated successfully.")
         chain.doFilter(req, res)
+    
     }
 }

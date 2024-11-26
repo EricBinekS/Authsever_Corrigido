@@ -42,28 +42,23 @@ dependencies {
 
 	implementation("org.springframework.boot:spring-boot-starter-security")
 
-	val jjwt = "0.12.5"
-	implementation("io.jsonwebtoken:jjwt-api:${jjwt}")
-	runtimeOnly("io.jsonwebtoken:jjwt-jackson:${jjwt}")
-	runtimeOnly("io.jsonwebtoken:jjwt-impl:${jjwt}")
-}
 
-kotlin {
-	compilerOptions {
-		freeCompilerArgs.addAll("-Xjsr305=strict")
+	implementation("io.jsonwebtoken:jjwt-api:0.12.5")
+	implementation("io.jsonwebtoken:jjwt-impl:0.12.5")
+	implementation("io.jsonwebtoken:jjwt-jackson:0.12.5")
+
+
+	kotlin {
+		compilerOptions {
+			freeCompilerArgs.addAll("-Xjsr305=strict")
+		}
 	}
-}
 
-tasks.withType<Test> {
-	useJUnitPlatform()
-}
+	tasks.withType<Test> {
+		useJUnitPlatform()
+	}
 
-allOpen {
-	annotation("jakarta.persistence.Entity")
-}
-
-configurations {
-	compileOnly {
-		extendsFrom(configurations.annotationProcessor.get())
+	allOpen {
+		annotation("jakarta.persistence.Entity")
 	}
 }

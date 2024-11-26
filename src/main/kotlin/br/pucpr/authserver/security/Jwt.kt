@@ -6,66 +6,51 @@ import io.jsonwebtoken.jackson.io.JacksonDeserializer
 import io.jsonwebtoken.jackson.io.JacksonSerializer
 import io.jsonwebtoken.security.Keys
 import jakarta.servlet.http.HttpServletRequest
-import org.apache.tomcat.util.http.parser.Authorization
-import org.springframework.http.HttpHeaders.AUTHORIZATION
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-import org.springframework.security.core.Authentication
-import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.stereotype.Component
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
+import java.security.Key
 import java.util.*
 
 @Component
 class Jwt {
+    private val key: Key = Keys.secretKeyFor(io.jsonwebtoken.SignatureAlgorithm.HS256)
 
-    fun createToken(user: User) =
-        UserToken(
-            id = user.id ?: -1,
-            name = user.name,
-            role = setOf(user.role ?: "USER")
-        ).let {
-            Jwts.builder()
-                .signWith(Keys.hmacShaKeyFor(SECRET.toByteArray()))
-                .serializeToJsonWith(JacksonSerializer())
-                .setIssuedAt(utcNow().toDate())
-                .setExpiration(utcNow().plusHours(EXPIRE_HOURS).toDate())
-                .setIssuer(ISSUER)
-                .setSubject(it.id.toString())
-                .addClaims(mapOf(USER to it))
-                .compact()
-        }
+    fun generateToken(user: User): String {
+        return Jwts.builder()
+            .setId(user.id.toString())
+            .setSubject(user.name)
+            .claim("role", user.role) // Certifique-se de que `role` existe no objeto User
+            .setIssuedAt(Date())
+            .setExpiration(Date(System.currentTimeMillis() + 3600000)) // 1 hora
+            .serializeToJsonWith(JacksonSerializer())
+            .signWith(key)
+            .compact()
+    }
 
-    fun extract(req: HttpServletRequest): Authentication? {
-
-        val header = req.getHeader(AUTHORIZATION)
-        if (header == null || !header.startsWith(PREFIX)) return null
-        val token = header.replace(PREFIX, "").trim()
-
+    fun parseToken(token: String): UserToken {
         val claims = Jwts.parserBuilder()
-            .setSigningKey(SECRET.toByteArray())
-            .deserializeJsonWith(JacksonDeserializer(
-                mapOf(USER to UserToken::class.java)
-            )).build()
+            .setSigningKey(key)
+            .deserializeJsonWith(JacksonDeserializer(mapOf("role" to String::class.java)))
+            .build()
             .parseClaimsJws(token)
             .body
 
-        if (claims.issuer != ISSUER) return null
-        val user = claims.get(USER, UserToken::class.java)
-
-        val authorities = user.role.map { SimpleGrantedAuthority("ROLE_$it") }
-        return UsernamePasswordAuthenticationToken.authenticated(user, user.id, authorities)
+        return UserToken(
+            id = claims.id?.toLong() ?: throw IllegalArgumentException("ID is missing in token"),
+            name = claims.subject ?: throw IllegalArgumentException("Name is missing in token"),
+            role = claims["role"] as? String ?: throw IllegalArgumentException("Role is missing in token")
+        )
     }
 
-    companion object{
-        private const val PREFIX = "Bearer"
-        private const val ISSUER = "Minecraft"
-        private const val SECRET = "uEX#(}:@Hz!SrRG*8p[f>m!0uY[P@7Kc"
-        private const val USER = "user"
-        private const val EXPIRE_HOURS = 24L
-
-        private fun ZonedDateTime.toDate(): Date = Date.from(this.toInstant())
-        private fun utcNow(): ZonedDateTime = ZonedDateTime.now(ZoneOffset.UTC)
+    fun getToken(request: HttpServletRequest): String? {
+        val authHeader = request.getHeader("Authorization")
+        return if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            authHeader.substring(7)
+        } else null
     }
-
 }
+
+data class UserToken(
+    val id: Long,
+    val name: String,
+    val role: String
+)
