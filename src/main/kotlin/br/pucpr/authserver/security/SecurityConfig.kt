@@ -22,8 +22,8 @@ import org.springframework.web.servlet.handler.HandlerMappingIntrospector
 @Configuration
 @EnableMethodSecurity
 @SecurityScheme(
-    name="AuthServer",
-    type= SecuritySchemeType.HTTP,
+    name = "AuthServer",
+    type = SecuritySchemeType.HTTP,
     scheme = "bearer",
     bearerFormat = "JWT"
 )
@@ -49,19 +49,20 @@ class SecurityConfig(
         }
 
     @Bean
-    fun filterChain(security: HttpSecurity, mvc: MvcRequestMatcher.Builder):
-            SecurityFilterChain =
+    fun filterChain(security: HttpSecurity, mvc: MvcRequestMatcher.Builder): SecurityFilterChain =
         security
-            .sessionManagement{ it.sessionCreationPolicy(STATELESS) }
+            .sessionManagement { it.sessionCreationPolicy(STATELESS) }
             .cors(Customizer.withDefaults())
             .csrf { it.disable() }
-            .headers { it.frameOptions { fo -> fo.disable() }}
+            .headers { it.frameOptions { fo -> fo.disable() } }
             .authorizeHttpRequests { requests ->
                 requests
                     .requestMatchers(antMatcher(HttpMethod.GET)).permitAll()
                     .requestMatchers(mvc.pattern(HttpMethod.POST, "/users/login")).permitAll()
                     .requestMatchers(mvc.pattern(HttpMethod.POST, "/users")).permitAll()
                     .requestMatchers(antMatcher("/h2-console/**")).permitAll()
+                    .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/emprestimos")).authenticated() // Protege criação de empréstimos
+                    .requestMatchers(mvc.pattern(HttpMethod.DELETE, "/api/livros/**")).authenticated() // Protege exclusão de livros
                     .anyRequest().authenticated()
             }.addFilterBefore(jwtFilter, BasicAuthenticationFilter::class.java)
             .build()

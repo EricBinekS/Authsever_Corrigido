@@ -44,7 +44,7 @@ dependencies {
 
 	val jjwt = "0.12.5"
 	implementation("io.jsonwebtoken:jjwt-api:${jjwt}")
-	implementation("io.jsonwebtoken:jjwt-jackson:${jjwt}")
+	runtimeOnly("io.jsonwebtoken:jjwt-jackson:${jjwt}")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:${jjwt}")
 }
 
